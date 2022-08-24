@@ -2,7 +2,7 @@ shinyMFCL
 =========
 
 The shinyMFCL package provides tools that support the creation of Shiny apps to
-view MULTIFAN-CL stock assessments.
+view the data and results from MULTIFAN-CL stock assessments.
 
 Installation
 ------------
