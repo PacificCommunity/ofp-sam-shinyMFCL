@@ -4,26 +4,49 @@
 \alias{mapFisheries}
 \title{Map Fisheries}
 \usage{
-mapFisheries(file = "labels.tmp")
+mapFisheries(file = "labels.tmp", pattern = "^[0-9]", ...)
 }
 \arguments{
 \item{file}{file containing fisheries labels.}
+
+\item{pattern}{regular expression to select lines from \code{file} to
+include.}
+
+\item{\dots}{further arguments passed to \code{grep}.}
 }
 \value{
 Data frame containing the columns \code{fishery_name}, \code{fishery},
 \code{region}, and \code{group}.
 }
 \description{
-Map fisheries using information from the `labels.tmp` file.
+Map fisheries using information from a \file{labels.tmp} file.
+}
+\details{
+The default \code{pattern} selects all lines from the \code{file} that start
+with a digit.
+}
+\note{
+This function applies simple regular expressions (see function code) to parse
+lines of text into a four-column data frame.
+
+Depending on the contents of the \file{labels.tmp} file, the output will
+often not be the exact desired fishery map. Specifically, the \code{group}
+column will likely need some manual edits to get good plotting labels for the
+groups.
+
+In other words, this function produces a draft data frame that can both speed
+up the creation of this data frame and also reduce the likelihood of making
+mistakes.
 }
 \examples{
 \dontrun{
-mapFisheries()
-mapFisheries("../../../MFCL/stepwise/09_IdxNoeff/labels.tmp")
+mapFisheries("labels.tmp")
 }
 
 }
 \seealso{
+\code{\link{grep}} is the underlying function to select lines to include.
+
 \code{\link{shinyMFCL-package}} gives an overview of the package.
 }
 \author{
