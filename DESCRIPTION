@@ -1,6 +1,6 @@
 Package: shinyMFCL
 Version: 1.0.0
-Date: 2022-24-08
+Date: 2022-08-24
 Title: Tools to Create Shiny Apps for MULTIFAN-CL Assessments
 Authors@R: c(person("Finlay", "Scott", role="aut"),
              person("Arni", "Magnusson", role=c("aut","cre"), email="thisisarni@gmail.com"))
