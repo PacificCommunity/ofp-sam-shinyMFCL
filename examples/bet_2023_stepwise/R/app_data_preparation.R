@@ -15,7 +15,7 @@ source("find_biggest.R")
 source("read_length_fit_file.R")
 
 # Model folder
-basedir <- "//penguin/assessments/bet/2020/2020_stepwise/23_fixSelBump/10N/"
+basedir <- "//penguin/assessments/bet/2023/model_runs/stepwise/"
 tagfile <- "bet.tag"
 frqfile <- "bet.frq"
 
