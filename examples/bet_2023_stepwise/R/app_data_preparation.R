@@ -15,9 +15,9 @@ source("find_biggest.R")
 source("read_length_fit_file.R")
 
 # Model folder
-basedir <- "z:/yft/2020_review/analysis/stepwise/"
-tagfile <- "yft.tag"
-frqfile <- "yft.frq"
+basedir <- "//penguin/assessments/bet/2020/2020_stepwise/23_fixSelBump/10N/"
+tagfile <- "bet.tag"
+frqfile <- "bet.frq"
 
 # Fisheries
 index_fisheries <- 33:41
