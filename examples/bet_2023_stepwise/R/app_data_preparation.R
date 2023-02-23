@@ -31,8 +31,6 @@ source("fishery_map.R")
 load("../app/data/fishery_map.Rdata")
 
 models <- dir(basedir)
-models <- models[models!="12_Age10LW_HopefulReport"]  # exclude this one
-models <- models[models!="12_Age10LW_Mixed"]          # exclude this one
 
 # Model description
 model_description <- data.frame(
@@ -48,6 +46,10 @@ model_description <- data.frame(
     "use size composition downweighting divisor of 60",
     "set selectivity at < 30 cm to zero for purse seine and pole-and-line"
   ))
+
+model_description <- data.frame(
+  model=models,
+  model_description="diagnostic model run from 2020 assessment")
 
 #------------------------------------------------------------------
 # Data checker
