@@ -11,16 +11,18 @@ library(markdown)
 library(DT)
 library(RColorBrewer)
 
-default_models <- c("09_IdxNoeff", "17_Diag20")
+default_models <- c("Diag2020")
 default_fishery <- "PS ASS"
 rec_units <- 1000000
 sb_units <- 1000
+copyright.year <- 2023
+shiny.title <- "YFT stepwise 2023"
 
 #---------------------------------------------------------------------------
 
 spc_about <- function(){
   out <- tags$html(
-    tags$p(style="opacity: 0.5", class="caption", align="center", HTML("&copy"), "Pacific Community, 2022"),
+    tags$p(style="opacity: 0.5", class="caption", align="center", HTML("&copy"), paste("Pacific Community,", copyright.year)),
     tags$p(align="justify", "The Pacific Community (SPC) is the principal scientific and technical organisation in the Pacific region, proudly supporting development since 1947. It is an international development organisation owned and governed by its 27 country and territory members. The members are: American Samoa, Australia, Cook Islands, Federated States of Micronesia, Fiji, France, French Polynesia, Guam, Kiribati, Marshall Islands, Nauru, New Caledonia, New Zealand, Niue, Northern Mariana Islands, Palau, Papua New Guinea, Pitcairn Islands, Samoa, Solomon Islands, Tokelau, Tonga, Tuvalu, United Kingdom, United States of America, Vanuatu, and Wallis and Futuna."),
     tags$p(align="justify", "In pursuit of sustainable development to benefit Pacific people, this unique organisation works across more than 25 sectors. SPC is renowned for its knowledge and innovation in such areas as fisheries science, public health surveillance, geoscience, and conservation of plant genetic resources for food and agriculture."),
     tags$p(align="justify", "Much of SPC's focus is on major cross-cutting issues, such as climate change, disaster risk management, food security, gender equality, human rights, non-communicable diseases, and youth employment. Using a multi-sector approach in responding to its members' development priorities, SPC draws on skills and capabilities from around the region and internationally, and supports the empowerment of Pacific communities and sharing of expertise and skills between countries and territories."),
@@ -80,7 +82,7 @@ nregions <- length(unique(fishery_map$region))
 #https://stackoverflow.com/questions/31440564/adding-a-company-logo-to-shinydashboard-header
 
 ui <- dashboardPage(
-  header = dashboardHeader(title="YFT review 2022"),
+  header = dashboardHeader(title=shiny.title),
   sidebar = dashboardSidebar(
     br(),
     br(),
@@ -105,7 +107,7 @@ ui <- dashboardPage(
     tags$footer(
       div(style="text-align:center",
         tags$p("version 0.0.1 The Cosmic Barrilete"),
-        tags$p("Copyright 2022 OFP SPC MSE Team")
+        tags$p(paste("Copyright", copyright.year, "OFP SPC MSE Team"))
       )
     )
   ), # End of sidebar
