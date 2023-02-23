@@ -30,26 +30,15 @@ source("fishery_map.R")
 # Load the fishery map - assumed to be the same for all models
 load("../app/data/fishery_map.Rdata")
 
+# Select models to include
 models <- dir(basedir)
+models <- models[1:2]
 
 # Model description
 model_description <- data.frame(
   model=models,
-  model_description=c(
-    "before important model changes are made",
-    "ungroup fleet selectivities between regions",
-    "add JPTP tagging data, change mixing period to 2 quarters",
-    "increase max age from 7 to 10 years",
-    "add otolith data, deterministic von Bertalanffy for all ages",
-    "maturity at length converted to age using smooth splines",
-    "spawning fraction removed from the calculation of reproductive potential",
-    "use size composition downweighting divisor of 60",
-    "set selectivity at < 30 cm to zero for purse seine and pole-and-line"
-  ))
-
-model_description <- data.frame(
-  model=models,
-  model_description="diagnostic model run from 2020 assessment")
+  model_description=c("Diagnostic model run from 2020 assessment",
+                      "Richards growth"))
 
 #------------------------------------------------------------------
 # Data checker
