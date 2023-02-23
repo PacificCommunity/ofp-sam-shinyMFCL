@@ -11,7 +11,7 @@ library(markdown)
 library(DT)
 library(RColorBrewer)
 
-default_models <- c("09_IdxNoeff", "17_Diag20")
+default_models <- c("Diag2020")
 default_fishery <- "PS ASS"
 rec_units <- 1000000
 sb_units <- 1000
