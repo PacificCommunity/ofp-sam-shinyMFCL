@@ -1,5 +1,5 @@
 #------------------------------------------------------------------
-# Preparing the data for the YFT review 2022 app.
+# Preparing the data for the YFT 2023 stepwise app.
 # Basic approach is to go through the 'basedir' model folder
 # and hoover out the data we need.
 #------------------------------------------------------------------
