@@ -19,6 +19,11 @@ basedir <- "//penguin/assessments/bet/2023/model_runs/stepwise/"
 tagfile <- "bet.tag"
 frqfile <- "bet.frq"
 
+# Specify models to plot
+models <- dir("//penguin/assessments/bet/2023/model_runs/stepwise",
+              pattern="temporary_tag_report$", recursive=TRUE)
+models <- dirname(models)
+
 # Fisheries
 index_fisheries <- 33:41
 
@@ -28,28 +33,7 @@ dir.create("../app/data", showWarnings=FALSE)
 # Generate the fishery map
 source("fishery_map.R")
 # Load the fishery map - assumed to be the same for all models
-load("../app/data/fishery_map.Rdata")
-
-models <- dir(basedir)
-
-# Model description
-model_description <- data.frame(
-  model=models,
-  model_description=c(
-    "before important model changes are made",
-    "ungroup fleet selectivities between regions",
-    "add JPTP tagging data, change mixing period to 2 quarters",
-    "increase max age from 7 to 10 years",
-    "add otolith data, deterministic von Bertalanffy for all ages",
-    "maturity at length converted to age using smooth splines",
-    "spawning fraction removed from the calculation of reproductive potential",
-    "use size composition downweighting divisor of 60",
-    "set selectivity at < 30 cm to zero for purse seine and pole-and-line"
-  ))
-
-model_description <- data.frame(
-  model=models,
-  model_description="diagnostic model run from 2020 assessment")
+load("../app/data/fishery_map.RData")
 
 #------------------------------------------------------------------
 # Data checker
@@ -97,11 +81,9 @@ lfits_dat <- lapply(models, function(x){
 lfits_dat <- rbindlist(lfits_dat)
 # Bring in the fishery map
 lfits_dat <- merge(lfits_dat, fishery_map)
-# Bring in the model description - might not need
-lfits_dat <- merge(lfits_dat, model_description, by="model")
 
 # Save it in the app data directory
-save(lfits_dat, file="../app/data/lfits_dat.Rdata")
+save(lfits_dat, file="../app/data/lfits_dat.RData")
 
 #------------------------------------------------------------------
 # Movement
@@ -128,10 +110,8 @@ move_coef$to <- paste("R", move_coef$to, sep="")
 move_coef$Season <- as.numeric(move_coef$period)
 setnames(move_coef, old=c("age", "to", "from"), new=c("Age", "To", "From"))
 
-move_coef <- merge(move_coef, model_description)
-
 # This could probably be reduced because the movement is not age-structured (so far)
-save(move_coef, file="../app/data/move_coef.Rdata")
+save(move_coef, file="../app/data/move_coef.RData")
 
 #------------------------------------------------------------------
 # General stuff including stock recruitment, SB and SBSBF0 data.
@@ -287,7 +267,7 @@ cpue_dat[, scale_diff := diff / mean(cpue_obs, na.rm=TRUE),
          by=.(model, fishery)]
 
 save(status_tab_dat, cpue_dat, mat_age_dat, mat_length_dat, biomass_dat, srr_dat, srr_fit_dat, rec_dev_dat, sel_dat, m_dat,
-     file="../app/data/other_data.Rdata")
+     file="../app/data/other_data.RData")
 
 #-----------------------------------
 
@@ -302,24 +282,29 @@ for (model in models){
   par <- read.MFCLPar(biggest_par)
   # Get LL summary
   ll_summary <- summary(ll)
+  row.names(ll_summary) <- ll_summary$component
   # Build data.table with correct names
   lldf <- data.table(
-    "BH steepness" = subset(ll_summary, component=="bhsteep")$likelihood,
-    "Effort devs" = subset(ll_summary, component=="effort_dev")$likelihood,
-    "Catchability devs" = subset(ll_summary, component=="catchability_dev")$likelihood,
-    "Length comp." = subset(ll_summary, component=="length_comp")$likelihood,
-    "Weight comp." = subset(ll_summary, component=="weight_comp")$likelihood,
-    "Tag data" = subset(ll_summary, component=="tag_data")$likelihood,
-    "Total" = subset(ll_summary, component=="total")$likelihood,
-    "Max. gradient" = max_grad(par),
-    "No. parameters" = n_pars(par)
+    Npar = n_pars(par),
+    Total = ll_summary["total", "likelihood"],
+    ObjFun = obj_fun(par),
+    CPUE = ll_summary["cpue", "likelihood"],
+    Length = ll_summary["length_comp", "likelihood"],
+    Weight = ll_summary["weight_comp", "likelihood"],
+    Age = ll_summary["age", "likelihood"],
+    Tags = ll_summary["tag_data", "likelihood"],
+    Recruitment = ll_summary["bhsteep", "likelihood"],
+    Effort_devs = ll_summary["effort_dev", "likelihood"],
+    Catchability_devs = ll_summary["catchability_dev", "likelihood"],
+    Penalties = obj_fun(par) - ll_summary["total", "likelihood"],
+    Gradient = max_grad(par)
   )
   ll_tab_dat[[model]] <- lldf
 }
 
 ll_tab_dat <- rbindlist(ll_tab_dat, idcol="Model")
 
-save(ll_tab_dat, file="../app/data/ll_tab_data.Rdata")
+save(ll_tab_dat, file="../app/data/ll_tab_data.RData")
 
 #-----------------------------------
 # Tag plot data - complicated
@@ -428,4 +413,4 @@ tag_returns_prop[, "rel.region.name" := paste("Release region ", rel.region, sep
 tag_returns_prop[, "Quarter" := as.factor((recap.month+1) / 3)]
 
 save(tag_returns_time, tag_attrition, tag_returns_prop,
-     file="../app/data/tag_data.Rdata")
+     file="../app/data/tag_data.RData")

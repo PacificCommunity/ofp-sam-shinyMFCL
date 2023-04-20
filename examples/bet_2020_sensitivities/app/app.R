@@ -1,6 +1,7 @@
 # General Shiny app to compare individual (e.g., stepwise) models
 # 2022-04-21  Finlay Scott created for SKJ stepwise development
 # 2022-09-01  Arni Magnusson adapted for YFT review
+# 2023-04-07  Arni Magnusson and Jemery Day adapted for YFT and BET
 
 # CRAN packages
 library(shiny)
@@ -10,8 +11,10 @@ library(ggplot2)
 library(markdown)
 library(DT)
 library(RColorBrewer)
+library(viridis)
+library(gplots)
 
-default_models <- c("Diag2020")
+default_models <- c("01Diag2020")
 default_fishery <- "PS ASS"
 rec_units <- 1000000
 sb_units <- 1000
@@ -34,29 +37,52 @@ spc_about <- function(){
 #---------------------------------------------------------------------------
 # Load data
 # Get the fishery map - generated in ../R/fisheries_map.R
-load("data/fishery_map.Rdata")
+load("data/fishery_map.RData")
 
 # Load the data - generated using the app_data_preparation.R script
-# Data for catchability plots
-# load("data/catchability_data.Rdata")
 # Data for catch size distribution plots
-load("data/lfits_dat.Rdata")
+load("data/lfits_dat.RData")
 # Movement data
-load("data/move_coef.Rdata")
+load("data/move_coef.RData")
 # Other stuff
-other_data_files <- load("data/other_data.Rdata")
+other_data_files <- load("data/other_data.RData")
 # Tag stuff
-tag_data_files <- load("data/tag_data.Rdata")
+tag_data_files <- load("data/tag_data.RData")
 # Likelihood table
-ll_tab_data_files <- load("data/ll_tab_data.Rdata")
+ll_tab_data_files <- load("data/ll_tab_data.RData")
+
+# Shave off topdir/* only if the model name contains a forward slash
+# Example: TopDir/ThisModel -> ThisModel, and ThatModel -> ThatModel
+lfits_dat[, model := gsub(".*/", "", model)]
+move_coef[, model := gsub(".*/", "", model)]
+biomass_dat[, model := gsub(".*/", "", model)]
+cpue_dat[, model := gsub(".*/", "", model)]
+m_dat[, model := gsub(".*/", "", model)]
+mat_age_dat[, model := gsub(".*/", "", model)]
+mat_length_dat[, model := gsub(".*/", "", model)]
+rec_dev_dat[, model := gsub(".*/", "", model)]
+sel_dat[, model := gsub(".*/", "", model)]
+srr_dat[, model := gsub(".*/", "", model)]
+srr_fit_dat[, model := gsub(".*/", "", model)]
+status_tab_dat[, Model := gsub(".*/", "", Model)]
+tag_attrition[, model := gsub(".*/", "", model)]
+tag_returns_prop[, model := gsub(".*/", "", model)]
+tag_returns_time[, model := gsub(".*/", "", model)]
+ll_tab_dat[, Model := gsub(".*/", "", Model)]
+
 # Format the LLhood data
-ll_tab_dat[, `Max. gradient` := .(sprintf("%7.2e", `Max. gradient`))]
-ll_tab_dat[, `BH steepness` := .(sprintf("%3.2e", `BH steepness`))]
-ll_tab_dat[, `Effort devs` := .(sprintf("%3.2e", `Effort devs`))]
-ll_tab_dat$"Catchability devs" <- NULL
-ll_tab_dat[, `Length comp.` := .(sprintf("%3.2e", `Length comp.`))]
-ll_tab_dat[, `Tag data` := .(sprintf("%3.2e", `Tag data`))]
-ll_tab_dat[, `Total` := .(sprintf("%3.2e", `Total`))]
+ll_tab_dat[, `Recruitment` := sprintf("%.2f",`Recruitment`)]
+ll_tab_dat[, `Effort_devs` := NULL]
+ll_tab_dat[, `Catchability_devs` := NULL]
+ll_tab_dat[, `Total` := NULL]
+ll_tab_dat[, `ObjFun` := round(`ObjFun`)]
+ll_tab_dat[, `CPUE` := round(`CPUE`)]
+ll_tab_dat[, `Length` := round(`Length`)]
+ll_tab_dat[, `Weight` := round(`Weight`)]
+ll_tab_dat[, `Age` := round(`Age`)]
+ll_tab_dat[, `Tags` := round(`Tags`)]
+ll_tab_dat[, `Penalties` := round(`Penalties`)]
+ll_tab_dat[, `Gradient` := sprintf("%.5f", `Gradient`)]
 # Format the status table
 status_tab_dat[, `Final SB/SBF0latest` := .(signif(`Final SB/SBF0latest`, 3))]
 status_tab_dat[, `SB/SBF0 (2012)` := .(signif(`SB/SBF0 (2012)`, 3))]
@@ -265,7 +291,15 @@ server <- function(input, output){
     nmodels <- length(all_model_names)
     # Palette matching Figure 14b from YFT 2020 report
     all_cols <- c("grey65","royalblue3","deepskyblue1","gold","orange1","indianred1","firebrick2","#AC2020","black")
-    ## all_cols <- c(brewer.pal(n=nmodels-1, "Set1"), "black")
+#    all_cols <- c("black", rich.colors(nmodels-1))
+#    all_cols <- c(brewer.pal(n=nmodels-1, "Set1"), "black")
+#    all_cols <- c(brewer.pal(n=nmodels-1, "Greens"), "black")
+#    all_cols <- c(brewer.pal(n=nmodels-1, "YlOrRd"), "black")
+#    all_cols <- c(brewer.pal(n=nmodels-1, "Spectral"), "black")
+#    all_cols <- c(brewer.pal(n=nmodels, "Spectral"))
+#    all_cols <- viridis(nmodels)
+    all_cols <- c(rainbow(nmodels))
+    all_cols[nmodels] <-"black"
     names(all_cols) <- all_model_names
     model_cols <- all_cols[as.character(chosen_model_names)]
     return(model_cols)
