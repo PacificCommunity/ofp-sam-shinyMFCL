@@ -137,4 +137,4 @@ fishery_map[fishery_map$tag_recapture_group == 15, "tag_recapture_name"] <- "MIS
 fishery_map[fishery_map$tag_recapture_group == 20, "tag_recapture_name"] <- "PS 8"
 fishery_map[fishery_map$tag_recapture_group == 24, "tag_recapture_name"] <- "PS 7"
 
-save(fishery_map, file="../app/data/fishery_map.Rdata")
+save(fishery_map, file="../app/data/fishery_map.RData")
