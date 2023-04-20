@@ -14,7 +14,7 @@ library(RColorBrewer)
 library(viridis)
 library(gplots)
 
-default_models <- c("01Diag2020")
+default_models <- c("Diagnostic")
 default_fishery <- "PS ASS"
 rec_units <- 1000000
 sb_units <- 1000
