@@ -2,6 +2,7 @@
 ## into one place: z:/bet/2023/model_runs/sensitivities/2020_sensitivities
 
 ## Total size ~10 GB, after removing big Hessian files manually
+stop("this script copies old archives, not necessary to run again")
 
 library(FLR4MFCL)  # finalPar
 library(TAF)       # cp
