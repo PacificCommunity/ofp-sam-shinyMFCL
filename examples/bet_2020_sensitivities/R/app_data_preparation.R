@@ -15,13 +15,12 @@ source("find_biggest.R")
 source("read_length_fit_file.R")
 
 # Model folder
-basedir <- "//penguin/assessments/bet/2023/model_runs/stepwise/"
+basedir <- "//penguin/assessments/bet/2023/model_runs/sensitivities/2020_sensitivities/"
 tagfile <- "bet.tag"
 frqfile <- "bet.frq"
 
 # Specify models to plot
-models <- dir("//penguin/assessments/bet/2023/model_runs/stepwise",
-              pattern="temporary_tag_report$", recursive=TRUE)
+models <- dir(basedir, pattern="temporary_tag_report$", recursive=TRUE)
 models <- dirname(models)
 
 # Fisheries
