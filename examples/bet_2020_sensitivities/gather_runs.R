@@ -2,7 +2,7 @@
 ## into one place: z:/bet/2023/model_runs/sensitivities/2020_sensitivities
 
 ## Total size ~10 GB, after removing big Hessian files manually
-stop("this script copies old archives, not necessary to run again")
+stop("this script copies historical runs, not necessary to run again")
 
 library(FLR4MFCL)  # finalPar
 library(TAF)       # cp
@@ -25,7 +25,7 @@ dirs = c(paste0(proj.dir,"2020_stepwise/23_fixSelBump/10N/"),
          paste0(one.off.stem,c("Tags/mix1/","Tags/remove_tags/")),
          paste0(proj.dir,"998_999_SSMULT/"))
 model.names =  c("Diagnostic","len456","idxAU-US","EstRichardsO","EstRichardsT","Oto-Only","M-hi","M-low","M-mid","Size200","Size500","Size60","Size10","Alt","FreeSel","CPUE1962","Model1962","h0.65","h0.95","Mix1","TagFree","SSMULT")
-basename(sapply(dirs, finalPar))
+basename(sapply(dirs, finalPar, quiet=TRUE))
 
 # Copy dirs
 dest <- "//penguin/assessments/bet/2023/model_runs/sensitivities/2020_sensitivities"
@@ -37,3 +37,7 @@ from <- file.path(dest, basename(dirs))
 to <- file.path(dest, model.names)
 data.frame(from=basename(from), to=basename(to))
 file.rename(from, to)
+
+# Copy dummy bet.tag from Diagnostic into TagFree, to make Shiny work
+cp(file.path(dirs[model.names=="Diagnostic"], "bet.tag"),
+   file.path(dirs[model.names=="TagFree"]))
