@@ -38,6 +38,8 @@ to <- file.path(dest, model.names)
 data.frame(from=basename(from), to=basename(to))
 file.rename(from, to)
 
-# Copy dummy bet.tag from Diagnostic into TagFree, to make Shiny work
+# Copy dummy tag files from Diagnostic into TagFree, to make Shiny work
 cp(file.path(dirs[model.names=="Diagnostic"], "bet.tag"),
+   file.path(dest, "TagFree"))
+cp(file.path(dirs[model.names=="Diagnostic"], "temporary_tag_report"),
    file.path(dest, "TagFree"))
