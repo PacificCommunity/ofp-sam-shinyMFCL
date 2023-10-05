@@ -1,6 +1,7 @@
 # General Shiny app to compare individual (e.g., stepwise) models
 # 2022-04-21  Finlay Scott created for SKJ stepwise development
 # 2022-09-01  Arni Magnusson adapted for YFT review
+# 2023-04-07  Arni Magnusson and Jemery Day adapted for YFT and BET
 
 # CRAN packages
 library(shiny)
@@ -10,8 +11,13 @@ library(ggplot2)
 library(markdown)
 library(DT)
 library(RColorBrewer)
+library(gplots)
+# library(shinyWidgets)
 
-default_models <- c("01_Diag2020", "02_Richards")
+# Show all models
+load("data/ll_tab_data.RData")
+default_models <- ll_tab_dat$Model
+
 default_fishery <- "PS ASS"
 rec_units <- 1000000
 sb_units <- 1000
@@ -34,31 +40,54 @@ spc_about <- function(){
 #---------------------------------------------------------------------------
 # Load data
 # Get the fishery map - generated in ../R/fisheries_map.R
-load("data/fishery_map.Rdata")
+load("data/fishery_map.RData")
 
 # Load the data - generated using the app_data_preparation.R script
-# Data for catchability plots
-# load("data/catchability_data.Rdata")
-# Data for catch size distribution plots
-load("data/lfits_dat.Rdata")
+# Otoliths, if they exist
+if(file.exists("data/oto_dat.RData"))
+  load("data/oto_dat.RData")
+# Data for length composition plots
+load("data/lfits_dat.RData")
+# Data for weight composition plots
+load("data/wfits_dat.RData")
 # Movement data
-load("data/move_coef.Rdata")
+load("data/move_coef.RData")
 # Other stuff
-other_data_files <- load("data/other_data.Rdata")
+other_data_files <- load("data/other_data.RData")
 # Tag stuff
-tag_data_files <- load("data/tag_data.Rdata")
+tag_data_files <- load("data/tag_data.RData")
 # Likelihood table
-ll_tab_data_files <- load("data/ll_tab_data.Rdata")
+ll_tab_data_files <- load("data/ll_tab_data.RData")
+
+# Calculate likelihood offsets from first model
+ll_offset <- as.data.frame(ll_tab_dat)
+like <- ll_offset[!(names(ll_offset) %in% c("Model", "Npar", "Gradient"))]
+like <- sweep(like, 2, as.numeric(like[1,]), "-")
+ll_offset[!(names(ll_offset) %in% c("Model", "Npar", "Gradient"))] <- like
+ll_offset <- as.data.table(ll_offset)
+
 # Format the LLhood data
-ll_tab_dat[, `Max. gradient` := .(sprintf("%7.2e", `Max. gradient`))]
-ll_tab_dat[, `BH steepness` := .(sprintf("%3.2e", `BH steepness`))]
-ll_tab_dat[, `Effort devs` := .(sprintf("%3.2e", `Effort devs`))]
-ll_tab_dat$"Catchability devs" <- NULL
-ll_tab_dat[, `Length comp.` := .(sprintf("%3.2e", `Length comp.`))]
-ll_tab_dat[, `Tag data` := .(sprintf("%3.2e", `Tag data`))]
-ll_tab_dat[, `Total` := .(sprintf("%3.2e", `Total`))]
+ll_tab_dat[, ObjFun := round(ObjFun)]
+ll_tab_dat[, CPUE := round(CPUE)]
+ll_tab_dat[, Length := round(Length)]
+ll_tab_dat[, Weight := round(Weight)]
+ll_tab_dat[, Age := round(Age)]
+ll_tab_dat[, Tags := round(Tags)]
+ll_tab_dat[, Penalties := round(Penalties)]
+ll_tab_dat[, Gradient := sprintf("%.5f", Gradient)]
+# Likelihood offset table
+ll_offset[, ObjFun := round(ObjFun)]
+ll_offset[, CPUE := round(CPUE)]
+ll_offset[, Length := round(Length)]
+ll_offset[, Weight := round(Weight)]
+ll_offset[, Age := round(Age)]
+ll_offset[, Tags := round(Tags)]
+ll_offset[, Penalties := round(Penalties)]
+ll_offset[, Gradient := sprintf("%.5f", Gradient)]
+
 # Format the status table
-status_tab_dat[, `Final SB/SBF0latest` := .(signif(`Final SB/SBF0latest`, 3))]
+status_tab_dat[, `Final SB/SBF0instant` := .(signif(`Final SB/SBF0instant`, 3))]
+status_tab_dat[, `Final SB/SBF0recent` := .(signif(`Final SB/SBF0recent`, 3))]
 status_tab_dat[, `SB/SBF0 (2012)` := .(signif(`SB/SBF0 (2012)`, 3))]
 status_tab_dat[, `FMSY` := .(signif(`FMSY`, 3))]
 
@@ -99,6 +128,12 @@ ui <- dashboardPage(
     conditionalPanel(condition="input.sidebarmenu == 'diagnostics' || input.sidebarmenu == 'fittodata' || input.sidebarmenu == 'modeloutput' || input.sidebarmenu == 'stockstatus'",
       # Model selection - select multiple
       checkboxGroupInput(inputId="model_select", label="Select models", choiceNames=all_models, choiceValues=all_models, selected=default_models),
+      # pickerInput(inputId="model_select", label="Select/deselect all options", choices=all_models,
+      #             multiple=TRUE, options=list(
+      #                  `actions-box` = TRUE,
+      #                  `deselect-all-text` = "None",
+      #                  `select-all-text` = "Select all",
+      #                  `none-selected-text` = "models")),
       # Fishery grouping selection - only single
       radioButtons(inputId="fishery_group", label="Fishery / Tag recapture groups", choiceNames=fishgrp_names, choiceValues=fishgrp_names, selected=default_fishery)
     ),
@@ -120,37 +155,59 @@ ui <- dashboardPage(
       # **** Introduction ****
       tabItem(tabName="introduction", h2("Introduction"),
         fluidRow(column(12, includeMarkdown("introtext/introduction.md"))),
-        fluidRow(column(12, includeMarkdown("introtext/models.md")))
+        fluidRow(column(12, includeMarkdown("introtext/map.md")))
       ), # End of introduction tab
 
       # **** Fitting diagnostics ****
       tabItem(tabName="diagnostics", h2("Fitting diagnostics"),
-        fluidRow(box(title="Likelihood components and gradients", collapsed=start_collapsed, solidHeader=TRUE, collapsible=TRUE, status="primary", width=12, DTOutput("llhood_table")))
+        fluidRow(
+          box(title="Likelihood components and gradients", collapsed=start_collapsed, solidHeader=TRUE, collapsible=TRUE, status="primary", width=12, DTOutput("llhood_table"))
+        ),
+        fluidRow(
+          box(title="Likelihood offsets", collapsed=start_collapsed, solidHeader=TRUE, collapsible=TRUE, status="primary", width=12, DTOutput("lloffset_table"))
+        )
       ), # End of diagnostics tab
 
       # **** Fits to data ****
       tabItem(tabName="fittodata", h2("Fits to data sources"),
         fluidRow(
-          box(title="Catch size distribution", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+          box(title="Length composition", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
             p("Bars are the observations. Lines are the model predictions."),
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_length", label="Scales", choiceNames=c("Same", "Different"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
             plotOutput("plot_catch_size_dist", height="auto"))
+        ),
+        fluidRow(
+          box(title="Weight composition", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+              p("Bars are the observations. Lines are the model predictions."),
+              # Scale selector
+              column(6, radioButtons(inputId="scale_select_weight", label="Scales", choiceNames=c("Same", "Different"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
+              plotOutput("plot_catch_weight_dist", height="auto"))
         ),
         fluidRow(
           box(title="Tag returns: time series", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
             p("Dots are the observations. Lines are the model predictions."),
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_tag_returns", label="Scales", choiceNames=c("Same", "Different"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
             plotOutput("plot_tag_returns_time", height="800px"))
         ),
         fluidRow(
           box(title="Tag returns: residuals time series", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_tag_resids", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_tag_returns_residuals_time", height="800px"))
         ),
         fluidRow(
           box(title="CPUE: time series", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_cpue", label="Scales", choiceNames=c("Same", "Different"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
             p("Dots are the observed CPUE. Lines are the predicted CPUE."),
             plotOutput("plot_cpue_time", height="800px"))
         ),
         fluidRow(
           box(title="CPUE: residuals time series", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_cpue_resids", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_cpue_residuals_time", height="800px"))
         ),
         fluidRow(
@@ -158,12 +215,16 @@ ui <- dashboardPage(
             p("Dots are the observations. Lines are the model predictions."),
             # Grouping selector
             radioButtons(inputId="tag_attrition", label="Tag attrition grouping", choiceNames=c("Combined", "Region", "Program"), choiceValues=c("combined", "region", "program"), selected="combined", inline=TRUE),
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_tag_attrition", label="Scales", choiceNames=c("Same", "Different"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
             plotOutput("plot_tag_attrition", height="600px"))
         ),
         fluidRow(
           box(title="Tag attrition: residuals", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
             # Grouping selector
             radioButtons(inputId="tag_attrition_residuals", label="Tag attrition grouping", choiceNames=c("Combined", "Region", "Program"), choiceValues=c("combined", "region", "program"), selected="combined", inline=TRUE),
+            # Scale selector
+            column(6, radioButtons(inputId="scale_select_tag_attrition_resids", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_tag_attrition_residuals", height="600px"))
         )
       ), # End of fittodata tab
@@ -201,6 +262,10 @@ ui <- dashboardPage(
             plotOutput("plot_growth", height="500px"))
         ),
         fluidRow(
+          box(title="Growth (transposed)", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
+            plotOutput("plot_growth_transposed", height="500px"))
+        ),
+        fluidRow(
           box(title="Maturity", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=12,
             # Scale selector
             radioButtons(inputId="age_select_mat", label="By age or length", choiceNames=c("Age", "Length"), choiceValues=c("age", "length"), selected="age", inline=TRUE),
@@ -215,7 +280,7 @@ ui <- dashboardPage(
             # Area selector
             column(6, radioButtons(inputId="area_select_recruitment", label="Region selector", choiceNames=c("Separate", "Combined"), choiceValues=c("separate", "combined"), selected="combined", inline=TRUE)),
             # Scale selector
-            column(6, radioButtons(inputId="scale_select_recruitment", label="Different scales?", choiceNames=c("Yes", "No"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
+            column(6, radioButtons(inputId="scale_select_recruitment", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_rec", height="500px"))
         ),
         fluidRow(
@@ -225,11 +290,11 @@ ui <- dashboardPage(
             plotOutput("plot_sbsbf0", height="500px"))
         ),
         fluidRow(
-          box(title="Spawning biomass", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=8,
+          box(title="Spawning potential", solidHeader=TRUE, collapsible=TRUE, collapsed=start_collapsed, status="primary", width=8,
             # Area selector
             column(6, radioButtons(inputId="area_select_sb", label="Region selector", choiceNames=c("Separate", "Combined"), choiceValues=c("separate", "combined"), selected="combined", inline=TRUE)),
             # Scale selector
-            column(6, radioButtons(inputId="scale_select_sb", label="Different scales?", choiceNames=c("Yes", "No"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
+            column(6, radioButtons(inputId="scale_select_sb", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_sb", height="500px"))
         ),
         fluidRow(
@@ -237,7 +302,7 @@ ui <- dashboardPage(
             # Area selector
             column(6, radioButtons(inputId="area_select_sbf0", label="Region selector", choiceNames=c("Separate", "Combined"), choiceValues=c("separate", "combined"), selected="combined", inline=TRUE)),
             # Scale selector
-            column(6, radioButtons(inputId="scale_select_sbf0", label="Different scales?", choiceNames=c("Yes", "No"), choiceValues=c(TRUE, FALSE), selected=TRUE, inline=TRUE)),
+            column(6, radioButtons(inputId="scale_select_sbf0", label="Scales", choiceNames=c("Different", "Same"), choiceValues=c(TRUE, FALSE), selected=FALSE, inline=TRUE)),
             plotOutput("plot_sbf0", height="500px"))
         ),
         fluidRow(
@@ -247,7 +312,7 @@ ui <- dashboardPage(
 
       # **** About SPC ****
       tabItem(tabName="about", h2("About SPC"),
-          fluidRow(column(12, spc_about()))
+        fluidRow(column(12, spc_about()))
       ) # End of about tab
     ) # End of tabItems
   ) # End of dashboardBody
@@ -264,8 +329,10 @@ server <- function(input, output){
   get_model_colours <- function(all_model_names, chosen_model_names){
     nmodels <- length(all_model_names)
     # Palette matching Figure 14b from YFT 2020 report
-    all_cols <- c("grey65","royalblue3","deepskyblue1","gold","orange1","indianred1","firebrick2","#AC2020","black")
-    ## all_cols <- c(brewer.pal(n=nmodels-1, "Set1"), "black")
+    all_cols <- c("grey65", "royalblue3", "deepskyblue1", "gold", "orange1", "indianred1", "firebrick2", "#AC2020", "black")
+    all_cols <- c("black", rich.colors(nmodels-1))
+    very.rich.colors <- colorRampPalette(c("darkblue", "royalblue", "seagreen", "limegreen", "gold", "darkorange", "red", "darkred"))
+    all_cols <- c(very.rich.colors(nmodels-1), "black")
     names(all_cols) <- all_model_names
     model_cols <- all_cols[as.character(chosen_model_names)]
     return(model_cols)
@@ -284,12 +351,25 @@ server <- function(input, output){
     return(ll_tab_dat)
   })
 
+  output$lloffset_table <- renderDT({
+    # dom option drops the search and other stuff
+    ll_offset <- datatable(ll_offset, options=list(pageLength=nmodels, dom='t'), rownames=FALSE)
+    if(length(input$model_select) > 0){
+      ll_offset <- ll_offset %>% formatStyle('Model', target='row', backgroundColor=styleEqual(input$model_select,'yellow'))
+    }
+    return(ll_offset)
+  })
+
   output$plot_catch_size_dist <- renderPlot({
     # Which models and fisheries
     models <- input$model_select
     fisheries <- fishery_map[fishery_map$group %in% input$fishery_group, "fishery"]
     if(length(models) < 1 || length(fisheries) < 1){
       return()
+    }
+    scale_choice <- "free"
+    if(input$scale_select_length){
+      scale_choice="fixed"
     }
     pdat <- lfits_dat[fishery %in% fisheries & model %in% models]
     if(nrow(pdat) == 0){
@@ -302,10 +382,45 @@ server <- function(input, output){
     # Observed as barchart
     p <- p + geom_bar(aes(y=obs), fill=obs_col, colour="black", stat="identity", width=bar_width)
     # Predicted as red line
-    p <- p + geom_line(data=pdat, aes(y=pred, colour=model), size=1.25)
+    p <- p + geom_line(data=pdat, aes(y=pred, colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
-    p <- p + facet_wrap(~fishery_name, scales="free", ncol=2)
+    p <- p + facet_wrap(~fishery_name, scales=scale_choice, ncol=2)
     p <- p + xlab("Length (cm)") + ylab("Samples")
+    p <- p + theme_bw()
+    return(p)
+  },
+  height=function(){
+    ncol <- 2  # should match that in the main plot function
+    fisheries <- fishery_map[fishery_map$group %in% input$fishery_group, "fishery"]
+    return(max(height_per_fishery*1.5, (height_per_fishery * ceiling(length(fisheries) / ncol))))
+  })
+
+  output$plot_catch_weight_dist <- renderPlot({
+    # Which models and fisheries
+    models <- input$model_select
+    fisheries <- fishery_map[fishery_map$group %in% input$fishery_group, "fishery"]
+    if(length(models) < 1 || length(fisheries) < 1){
+      return()
+    }
+    scale_choice <- "free"
+    if(input$scale_select_weight){
+      scale_choice="fixed"
+    }
+    pdat <- wfits_dat[fishery %in% fisheries & model %in% models]
+    if(nrow(pdat) == 0){
+      return()
+    }
+    model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
+    bar_width <- diff(unique(sort(pdat$length)))[1]
+    # Assume that the observed (the bars) is the same for all models
+    p <- ggplot(pdat[model==last(model)], aes(x=length))
+    # Observed as barchart
+    p <- p + geom_bar(aes(y=obs), fill=obs_col, colour="black", stat="identity", width=bar_width)
+    # Predicted as red line
+    p <- p + geom_line(data=pdat, aes(y=pred, colour=model), linewidth=1)
+    p <- p + scale_colour_manual("Model", values=model_cols)
+    p <- p + facet_wrap(~fishery_name, scales=scale_choice, ncol=2)
+    p <- p + xlab("Weight (kg)") + ylab("Samples")
     p <- p + theme_bw()
     return(p)
   },
@@ -321,6 +436,10 @@ server <- function(input, output){
     if(length(models) < 1 || length(tag_groups) < 1){
       return()
     }
+    scale_choice <- "free"
+    if(input$scale_select_tag_returns){
+      scale_choice="fixed"
+    }
     pdat <- tag_returns_time[tag_recapture_group %in% tag_groups & model %in% models]
     if(nrow(pdat) == 0){
       return()
@@ -329,9 +448,9 @@ server <- function(input, output){
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=recap.ts, y=recap.obs))
     p <- p + geom_point(colour=obs_col, na.rm=TRUE, size=3)
-    p <- p + geom_line(aes(y=recap.pred, colour=model), na.rm=TRUE, size=1.25)
+    p <- p + geom_line(aes(y=recap.pred, colour=model), na.rm=TRUE, linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
-    p <- p + facet_wrap(~tag_recapture_name, scales="free")
+    p <- p + facet_wrap(~tag_recapture_name, scales=scale_choice)
     p <- p + xlab("Time") + ylab("Tag recaptures")
     p <- p + theme_bw()
     return(p)
@@ -344,6 +463,10 @@ server <- function(input, output){
     if(length(models) < 1 || length(tag_groups) < 1){
       return()
     }
+    scale_choice <- "fixed"
+    if(input$scale_select_tag_resids){
+      scale_choice="free"
+    }
     pdat <- tag_returns_time[tag_recapture_group %in% tag_groups & model %in% models]
     if(nrow(pdat) == 0){
       return()
@@ -353,7 +476,7 @@ server <- function(input, output){
     p <- ggplot(pdat, aes(x=recap.ts, y=diff))
     p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE)
     p <- p + scale_colour_manual("Model", values=model_cols)
-    p <- p + facet_wrap(~tag_recapture_name, scales="free")
+    p <- p + facet_wrap(~tag_recapture_name, scales=scale_choice)
     p <- p + geom_hline(aes(yintercept=0.0), linetype=2)
     p <- p + xlab("Time") + ylab("Obs. - pred. recaptures (scaled)")
     p <- p + theme_bw()
@@ -365,6 +488,10 @@ server <- function(input, output){
     if(length(models) < 1){
       return()
     }
+    scale_choice <- "free"
+    if(input$scale_select_cpue){
+      scale_choice="fixed"
+    }
     # Already subset out index fisheries in the data creation step
     pdat <- cpue_dat[model %in% models]
     if(nrow(pdat) == 0){
@@ -375,10 +502,10 @@ server <- function(input, output){
     # Observed is not the same across models
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=ts, y=cpue_obs))
-    p <- p + geom_point(colour=obs_col, na.rm=TRUE, size=3)
-    p <- p + geom_line(aes(y=cpue_pred, colour=model), na.rm=TRUE, size=1.25)
+    p <- p + geom_point(colour="darkgray", na.rm=TRUE, size=1.0)
+    p <- p + geom_line(aes(y=cpue_pred, colour=model), na.rm=TRUE, linewidth=1.0)
     p <- p + scale_colour_manual("Model", values=model_cols)
-    p <- p + facet_grid(fishery_name~model, scales="free")
+    p <- p + facet_wrap(vars(fishery_name), scales=scale_choice)
     p <- p + xlab("Time") + ylab("CPUE")
     p <- p + theme_bw()
     return(p)
@@ -394,6 +521,10 @@ server <- function(input, output){
     if(nrow(pdat) == 0){
       return()
     }
+    scale_choice <- "fixed"
+    if(input$scale_select_cpue_resids){
+      scale_choice="free"
+    }
     # Bring in the fishery names
     pdat <- merge(pdat, fishery_map[,c("fishery", "fishery_name")], by="fishery")
     # Observed is not the same across models
@@ -401,7 +532,7 @@ server <- function(input, output){
     p <- ggplot(pdat, aes(x=ts, y=scale_diff))
     p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE)
     p <- p + scale_colour_manual("Model", values=model_cols)
-    p <- p + facet_wrap(~fishery_name, scales="free")
+    p <- p + facet_wrap(~fishery_name, scales=scale_choice)
     p <- p + geom_hline(aes(yintercept=0.0), linetype=2)
     p <- p + xlab("Time") + ylab("Obs. - pred. CPUE (scaled)")
     p <- p + theme_bw()
@@ -412,6 +543,10 @@ server <- function(input, output){
     models <- input$model_select
     if(length(models) < 1){
       return()
+    }
+    scale_choice <- "free"
+    if(input$scale_select_tag_attrition){
+      scale_choice="fixed"
     }
     facet <- input$tag_attrition
     # Grouping by user choice
@@ -434,13 +569,13 @@ server <- function(input, output){
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=period_at_liberty))
     p <- p + geom_point(aes(y=recap.obs), colour=obs_col, size=3)
-    p <- p + geom_line(aes(y=recap.pred, colour=model), size=1.25)
+    p <- p + geom_line(aes(y=recap.pred, colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     if(facet == "program"){
-      p <- p + facet_wrap(~program, scales="free")
+      p <- p + facet_wrap(~program, scales=scale_choice)
     }
     if(facet == "region"){
-      p <- p + facet_wrap(~region, scales="free")
+      p <- p + facet_wrap(~region, scales=scale_choice)
     }
     p <- p + xlab("Periods at liberty (quarters)")
     p <- p + ylab("Number of tag returns")
@@ -454,6 +589,11 @@ server <- function(input, output){
     if(length(models) < 1){
       return()
     }
+    scale_choice <- "fixed"
+    if(input$scale_select_tag_attrition_resids){
+      scale_choice="free"
+    }
+
     facet <- input$tag_attrition_residuals
     # Grouping by user choice
     if(facet == "combined"){
@@ -480,14 +620,14 @@ server <- function(input, output){
     }
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=period_at_liberty, y=diff))
-    p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE, size=1.25)
+    p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE, linewidth=1)
     p <- p + scale_color_manual("Model", values=model_cols)
     p <- p + geom_hline(aes(yintercept=0.0), linetype=2)
     if(facet == "program"){
-      p <- p + facet_wrap(~program, scales="free")
+      p <- p + facet_wrap(~program, scales=scale_choice)
     }
     if(facet=="region"){
-      p <- p + facet_wrap(~region, scales="free")
+      p <- p + facet_wrap(~region, scales=scale_choice)
     }
     p <- p + xlab("Periods at liberty (quarters)")
     p <- p + ylab("Obs. - pred. recaptures (scaled)")
@@ -529,7 +669,7 @@ server <- function(input, output){
     pdat <- pdat[,.(sb=mean(sb, na.rm=TRUE), rec=sum(rec, na.rm=TRUE)), by=.(model, year)]
     pdat <- pdat[model %in% models]
     # Label formatting
-    xlab <- paste0("Spawning biomass (mt; ", format(sb_units, big.mark=",", trim=TRUE, scientific=FALSE), "s)")
+    xlab <- paste0("Spawning potential (mt; ", format(sb_units, big.mark=",", trim=TRUE, scientific=FALSE), "s)")
     ylab <- paste0("Recruitment (N; ", format(rec_units, big.mark=",", trim=TRUE, scientific=FALSE), "s)")
     sbmax <- max(pdat$sb) * 1.2
     fdat <- srr_fit_dat[model %in% models & sb <= sbmax]
@@ -539,7 +679,7 @@ server <- function(input, output){
     # The points
     p <- p + geom_point(aes(fill=model, colour=model), shape=21, size=3)
     # The fitted model
-    p <- p + geom_line(data=fdat, aes(x=sb/sb_units, y=rec/rec_units, colour=model), size=1.25)
+    p <- p + geom_line(data=fdat, aes(x=sb/sb_units, y=rec/rec_units, colour=model), linewidth=1)
     p <- p + scale_fill_manual("Model", values=model_cols)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + ylim(c(0,NA)) + xlim(c(0,NA))
@@ -584,7 +724,7 @@ server <- function(input, output){
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=year, y=value))
     p <- p + geom_point(aes(fill=model, colour=model), alpha=0.5, size=3)
-    p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE, size=1.25)
+    p <- p + geom_smooth(aes(colour=model), method='loess', formula='y~x', na.rm=TRUE, se=FALSE, linewidth=1)
     p <- p + scale_fill_manual("Model", values=model_cols)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + facet_grid(season~area)
@@ -607,7 +747,7 @@ server <- function(input, output){
     pdat <- sel_dat[model %in% models & fishery %in% fisheries]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes_string(x=age_or_length, y="value"))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + facet_wrap(~fishery_name, nrow=2)
     p <- p + ylim(c(0, NA))
@@ -624,7 +764,7 @@ server <- function(input, output){
     pdat <- m_dat[model %in% models]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=age, y=m))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + ylim(c(0, NA))
     p <- p + xlab("Age class") + ylab("Natural mortality")
@@ -640,15 +780,43 @@ server <- function(input, output){
     pdat <- sel_dat[model %in% models]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=age))
+    # Add points if otolith data exist
+    if(exists("oto_dat"))
+      p <- p + geom_point(data=oto_dat, aes(age, length), color=gray(0.5, 0.3))
     p <- p + geom_ribbon(aes(ymax=length_upper, ymin=length_lower, fill=model), alpha=0.25)
-    p <- p + geom_line(aes(y=length, colour=model), size=1.25)
+    p <- p + geom_line(aes(y=length, colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + scale_fill_manual("Model", values=model_cols)
     p <- p + xlab("Age class") + ylab("Length (cm)")
     p <- p + theme_bw()
-    # Tighten the axes
-    p <- p + scale_y_continuous(limits=c(0, NA), expand=c(0, 0))
-    p <- p + scale_x_continuous(expand=c(0, 0))
+    # Tighten the x axis
+    p <- p + scale_x_continuous(expand=expansion(add=0.8))
+    # Do not tighten the y axis, since it breaks the plot if CI extends below 0
+    # p <- p + scale_y_continuous(limits=c(0, NA), expand=c(0, 0))
+    return(p)
+  })
+
+  output$plot_growth_transposed <- renderPlot({
+    models <- input$model_select
+    if(length(models) < 1){
+      return()
+    }
+    pdat <- sel_dat[model %in% models]
+    model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
+    p <- ggplot(pdat, aes(y=age))
+    # Add points if otolith data exist
+    if(exists("oto_dat"))
+      p <- p + geom_point(data=oto_dat, aes(length, age), color=gray(0.5, 0.3))
+    p <- p + geom_ribbon(aes(xmax=length_upper, xmin=length_lower, fill=model), alpha=0.25)
+    p <- p + geom_line(aes(x=length, colour=model), linewidth=1)
+    p <- p + scale_colour_manual("Model", values=model_cols)
+    p <- p + scale_fill_manual("Model", values=model_cols)
+    p <- p + xlab("Length (cm)") + ylab("Age (quarter)")
+    p <- p + theme_bw()
+    # Tighten the x axis
+    p <- p + scale_x_continuous(expand=expansion(add=0.8))
+    # Do not tighten the y axis, since it breaks the plot if CI extends below 0
+    # p <- p + scale_y_continuous(limits=c(0, NA), expand=c(0, 0))
     return(p)
   })
 
@@ -670,7 +838,7 @@ server <- function(input, output){
     }
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes_string(x=age_or_length, y="mat"))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + ylim(c(0, 1))
     p <- p + xlab(xlab) + ylab("Maturity")
@@ -692,13 +860,12 @@ server <- function(input, output){
     if(input$scale_select_recruitment){
       scale_choice="free"
     }
-    # Need to sum recruitment over areas - could do in advance if slow
     pdat <- srr_dat[model %in% models, -"sb"]
     total_rec <- pdat[, .(area="All", rec=sum(rec)), by=.(model, year, season)]
     pdat <- rbindlist(list(pdat, total_rec))
     pdat <- pdat[area %in% areas]
     pdat[, ts := year + (season-1) / 4 + 1/8]
-    # Show annual recruitment instead of seasonal (could provide a annual/seasonal selector)
+    # Show annual recruitment instead of seasonal (could provide an annual/seasonal selector)
     if(TRUE){
       pdat <- pdat[, .(rec=sum(rec), ts=year), by=.(model, year, area)]
     }
@@ -726,7 +893,7 @@ server <- function(input, output){
     pdat <- biomass_dat[model %in% models & area %in% areas, ]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=year, y=SBSBF0))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + facet_wrap(~area, nrow=2)
     p <- p + xlab("Year") + ylab("SB/SBF=0")
@@ -750,11 +917,11 @@ server <- function(input, output){
     if(input$scale_select_sb){
       scale_choice="free"
     }
-    ylab <- paste0("Spawning biomass (mt; ", format(sb_units, big.mark=",", trim=TRUE, scientific=FALSE), "s)")
+    ylab <- paste0("Spawning potential (mt; ", format(sb_units, big.mark=",", trim=TRUE, scientific=FALSE), "s)")
     pdat <- biomass_dat[model %in% models & area %in% areas]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=year, y=SB/sb_units))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + facet_wrap(~area, nrow=2, scales=scale_choice)
     p <- p + ylim(c(0, NA))
@@ -781,7 +948,7 @@ server <- function(input, output){
     pdat <- biomass_dat[model %in% models & area %in% areas]
     model_cols <- get_model_colours(all_model_names=all_models, chosen_model_names=models)
     p <- ggplot(pdat, aes(x=year, y=SBF0/sb_units))
-    p <- p + geom_line(aes(colour=model), size=1.25)
+    p <- p + geom_line(aes(colour=model), linewidth=1)
     p <- p + scale_colour_manual("Model", values=model_cols)
     p <- p + facet_wrap(~area, nrow=2, scales=scale_choice)
     p <- p + ylim(c(0, NA))

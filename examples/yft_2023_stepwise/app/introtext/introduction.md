@@ -1,1 +1,1 @@
-Shiny app to compare stepwise models from YFT 2023 assessment.
+Shiny app to view results from the YFT 2023 stepwise model development
