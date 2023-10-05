@@ -1,6 +1,6 @@
 #' Map Fisheries
 #'
-#' Map fisheries using information from a \file{labels.tmp} file.
+#' Draft fisheries description using information from a \file{labels.tmp} file.
 #'
 #' @param file file containing fisheries labels.
 #' @param pattern regular expression to select lines from \code{file} to

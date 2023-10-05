@@ -19,7 +19,7 @@ Data frame containing the columns \code{fishery_name}, \code{fishery},
 \code{region}, and \code{group}.
 }
 \description{
-Map fisheries using information from a \file{labels.tmp} file.
+Draft fisheries description using information from a \file{labels.tmp} file.
 }
 \details{
 The default \code{pattern} selects all lines from the \code{file} that start

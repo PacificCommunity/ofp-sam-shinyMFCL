@@ -13,8 +13,8 @@
 #' @details
 #' \emph{Prepare data:}
 #' \tabular{ll}{
-#'   \code{\link{mapFisheries}}         \tab map fisheries from labels file\cr
-#'   \code{\link{read_length_fit_file}} \tab map read length fit file
+#'   \code{\link{mapFisheries}}         \tab draft fisheries description\cr
+#'   \code{\link{read_length_fit_file}} \tab read length fit file
 #' }
 #'
 #' @author Finlay Scott and Arni Magnusson.
