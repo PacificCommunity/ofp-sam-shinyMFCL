@@ -19,11 +19,7 @@
 #'
 #' @export
 
-read_length_fit_file <- function(filename, model_name){
-  # Have a guess at the missing model_name
-  if(missing(model_name)){
-    model_name = filename
-  }
+read_length_fit_file <- function(filename, model_name=filename){
   # Does the file exist?
   if(!file.exists(filename)){
     cat("Warning: unable to read ", filename, "\n")

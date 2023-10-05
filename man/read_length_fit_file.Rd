@@ -4,7 +4,7 @@
 \alias{read_length_fit_file}
 \title{Read length.fit File}
 \usage{
-read_length_fit_file(filename, model_name)
+read_length_fit_file(filename, model_name = filename)
 }
 \arguments{
 \item{filename}{name of \verb{length.fit} file.}
