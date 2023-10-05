@@ -12,8 +12,8 @@ read_length_fit_file(filename, model_name = filename)
 \item{model_name}{optional string describing the model.}
 }
 \description{
-Hoover out the observed and predicted composite (i.e. summed over time)
-catches at length from the \verb{length.fit} file.
+Read observed and predicted composite (summed over time) catches at length
+from the \verb{length.fit} file.
 }
 \note{
 Original work by Yukio and based on a version in NDB's
