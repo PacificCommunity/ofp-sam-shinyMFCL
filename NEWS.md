@@ -3,6 +3,6 @@
 * Added function read_length_fit_file() to read aggregated data from the
   length.fit file.
 
-# shinyMFCL 1.0.0 (2022-08-24)
+# shinyMFCL 1.0.0 (2022-07-23)
 
 * Initial release.
