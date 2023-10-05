@@ -1,14 +1,24 @@
-#' Read in and process length.fit file
-#' 
-#' Hoovers out the observed and predicted composite (i.e. summed over time) catches at length from the length.fit file.
-#' Original work by Yukio and based on a version in NDB's diagnostics4MFCL package.
-#' It should also work with the weight.fit file but hasn't yet been tested.
+#' Read length.fit File
+#'
+#' Hoover out the observed and predicted composite (i.e. summed over time)
+#' catches at length from the \verb{length.fit} file.
+#'
+#' @param filename name of \verb{length.fit} file.
+#' @param model_name optional string describing the model.
+#'
+#' @note
+#' Original work by Yukio and based on a version in NDB's
+#' \verb{diagnostics4MFCL} package.
+#'
+#' It should also work with the \verb{weight.fit} file but hasn't yet been
+#' tested.
+#'
 #' Does not handle multispecies.
-#' @param filname The filename of the length.fit file, including the location.
-#' @export length.fit.preparation
-#' @rdname length.fit.preparation 
-#' @name length.fit.preparation
-#' @import FLR4MFCL
+#'
+#' @importFrom utils read.table
+#'
+#' @export
+
 read_length_fit_file <- function(filename, model_name){
   # Have a guess at the missing model_name
   if(missing(model_name)){
@@ -31,7 +41,7 @@ read_length_fit_file <- function(filename, model_name){
   # Determine the number of lines in the matrix for each fishery, from file header
   Nskips <- scan(filename, nlines=1, skip=ifelse(version==1,4,5), quiet=TRUE)
   # Get parameters no. bins, first bin size, bin width
-  size.pars <- scan(filename, nlines=1, skip=ifelse(version==1,1,2), quiet=TRUE)  
+  size.pars <- scan(filename, nlines=1, skip=ifelse(version==1,1,2), quiet=TRUE)
   # Construct the size bins from the file header
   sizebins <- seq(from=size.pars[2], by=size.pars[3], length.out=size.pars[1])
   # Figure the number of species in the length.fit and stop if more than 1
@@ -46,7 +56,7 @@ read_length_fit_file <- function(filename, model_name){
   # Identify the lines of the observed size frequencies for the fisheries
   # These are lines under the # fishery totals bit at the bottom of the file
   LineKeep <- (VecFsh-1) * (Nskips + 6) + 1
-  
+
   # Now we start processing the data
   # All the blocks in the file with # fishery 1 etc, are observed and predicted
   # numbers at length at age in each time step (see manual)
@@ -66,7 +76,7 @@ read_length_fit_file <- function(filename, model_name){
   # Do the same for the predicted
   dat.pred <- dat[LineKeep+1]
   dat.pred <- t(read.table(text=dat.pred, nrows=length(LineKeep)))
-  
+
   # Put together into data.frame
   out <- data.frame(fishery=rep(VecFsh,each=size.pars[1]),
                     length=rep(sizebins, Nfsh),
