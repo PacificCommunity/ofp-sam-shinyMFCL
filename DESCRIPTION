@@ -1,12 +1,12 @@
 Package: shinyMFCL
-Version: 1.0.0
-Date: 2022-08-24
+Version: 1.1.0
+Date: 2022-10-05
 Title: Tools to Create Shiny Apps for MULTIFAN-CL Assessments
 Authors@R: c(person("Finlay", "Scott", role="aut"),
              person("Arni", "Magnusson", role=c("aut","cre"), email="thisisarni@gmail.com"))
+Imports: utils
 Description: Tools that support the creation of Shiny apps to view the data and
   results from MULTIFAN-CL stock assessments.
-Imports: utils
 License: GPL-3
 URL: https://github.com/PacificCommunity/ofp-sam-shinyMFCL
 Encoding: UTF-8
