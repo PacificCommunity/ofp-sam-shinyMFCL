@@ -4,16 +4,20 @@
 #' from the \verb{length.fit} file.
 #'
 #' @param filename name of \verb{length.fit} file.
-#' @param model_name optional string describing the model.
+#' @param model_name model name (default is same as \code{filename}).
 #'
-#' @note
-#' Original work by Yukio and based on a version in NDB's
-#' \verb{diagnostics4MFCL} package.
+#' @return
+#' Data frame containing five columns:
+#' \tabular{ll}{
+#'   \code{fishery} \tab fishery number\cr
+#'   \code{length}  \tab length bin\cr
+#'   \code{obs}     \tab observed frequency\cr
+#'   \code{pred}    \tab predicted frequency\cr
+#'   \code{model}   \tab model name
+#' }
 #'
-#' It should also work with the \verb{weight.fit} file but hasn't yet been
-#' tested.
-#'
-#' Does not handle multispecies.
+#' @author
+#' Finlay Scott, based on earlier work by Yukio and Nicholas Ducharme-Barth.
 #'
 #' @importFrom utils read.table
 #'

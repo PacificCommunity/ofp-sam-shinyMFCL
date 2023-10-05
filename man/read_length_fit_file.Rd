@@ -9,18 +9,22 @@ read_length_fit_file(filename, model_name = filename)
 \arguments{
 \item{filename}{name of \verb{length.fit} file.}
 
-\item{model_name}{optional string describing the model.}
+\item{model_name}{model name (default is same as \code{filename}).}
+}
+\value{
+Data frame containing five columns:
+\tabular{ll}{
+  \code{fishery} \tab fishery number\cr
+  \code{length}  \tab length bin\cr
+  \code{obs}     \tab observed frequency\cr
+  \code{pred}    \tab predicted frequency\cr
+  \code{model}   \tab model name
+}
 }
 \description{
 Read observed and predicted composite (summed over time) catches at length
 from the \verb{length.fit} file.
 }
-\note{
-Original work by Yukio and based on a version in NDB's
-\verb{diagnostics4MFCL} package.
-
-It should also work with the \verb{weight.fit} file but hasn't yet been
-tested.
-
-Does not handle multispecies.
+\author{
+Finlay Scott, based on earlier work by Yukio and Nicholas Ducharme-Barth.
 }
