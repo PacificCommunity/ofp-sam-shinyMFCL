@@ -1,7 +1,7 @@
-#' Read length.fit File
+#' Read Length Fit File
 #'
-#' Read observed and predicted composite (summed over time) catches at length
-#' from the \verb{length.fit} file.
+#' Read aggregated length comps (summed over time) from a \verb{length.fit}
+#' file.
 #'
 #' @param filename name of \verb{length.fit} file.
 #' @param model_name model name (default is same as \code{filename}).
@@ -18,6 +18,13 @@
 #'
 #' @author
 #' Finlay Scott, based on earlier work by Yukio and Nicholas Ducharme-Barth.
+#'
+#' @seealso
+#' The \code{read.MFCLLenFit} function in the \verb{FLR4MFCL} package reads the
+#' \verb{length.fit} data in full disaggregated detail, which takes
+#' substantially longer.
+#'
+#' \code{\link{shinyMFCL-package}} gives an overview of the package.
 #'
 #' @importFrom utils read.table
 #'
@@ -55,9 +62,7 @@ read_length_fit_file <- function(filename, model_name=filename)
 
   # Only support single species/sex model for now
   if(nsp > 1)
-  {
     stop("cannot process more than 1 species/sex in file")
-  }
 
   # Include all fisheries
   VecFsh <- 1:Nfsh
