@@ -2,7 +2,7 @@
 % Please edit documentation in R/read_length_fit_file.R
 \name{read_length_fit_file}
 \alias{read_length_fit_file}
-\title{Read length.fit File}
+\title{Read Length Fit File}
 \usage{
 read_length_fit_file(filename, model_name = filename)
 }
@@ -22,8 +22,15 @@ Data frame containing five columns:
 }
 }
 \description{
-Read observed and predicted composite (summed over time) catches at length
-from the \verb{length.fit} file.
+Read aggregated length comps (summed over time) from a \verb{length.fit}
+file.
+}
+\seealso{
+The \code{read.MFCLLenFit} function in the \verb{FLR4MFCL} package reads the
+\verb{length.fit} data in full disaggregated detail, which takes
+substantially longer.
+
+\code{\link{shinyMFCL-package}} gives an overview of the package.
 }
 \author{
 Finlay Scott, based on earlier work by Yukio and Nicholas Ducharme-Barth.
