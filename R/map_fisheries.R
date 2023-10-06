@@ -37,12 +37,12 @@
 #'
 #' @examples
 #' \dontrun{
-#' mapFisheries("labels.tmp")
+#' map_fisheries("labels.tmp")
 #' }
 #'
 #' @export
 
-mapFisheries <- function(file="labels.tmp", pattern="^[0-9]", ...)
+map_fisheries <- function(file="labels.tmp", pattern="^[0-9]", ...)
 {
   x <- readLines(file)
   x <- grep(pattern, x, ..., value=TRUE)

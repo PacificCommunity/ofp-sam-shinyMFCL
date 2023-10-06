@@ -13,7 +13,7 @@
 #' @details
 #' \emph{Prepare data:}
 #' \tabular{ll}{
-#'   \code{\link{mapFisheries}}         \tab draft fisheries description\cr
+#'   \code{\link{map_fisheries}}        \tab draft fisheries description\cr
 #'   \code{\link{read_length_fit_file}} \tab read length fit file
 #' }
 #'
