@@ -8,14 +8,11 @@
 # It may be advisable to use a version of FLR4MFCL that matches the MFCL runs,
 # to ensure that the movement matrices are being read in correctly (from / to)
 library(FLR4MFCL)
+library(shinyMFCL)  # read_length_fit_file
 library(data.table)
-
-# Helper functions
-source("read_length_fit_file.R")
 
 # Model folder
 basedir <- "//penguin/assessments/yft/2023/model_runs/stepwise_shortnames"
-basedir <- "c:/x/yft/stepwise_shortnames"
 tagfile <- "yft.tag"
 frqfile <- "yft.frq"
 age_lengthfile <- "yft.age_length"
